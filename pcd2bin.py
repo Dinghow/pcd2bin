@@ -1,18 +1,17 @@
-#
 # Module:       pcd2bin.py
 # Description:  .pcd to .bin converter
 #
-# Author:       Yuseung Na (ys.na0220@gmail.com)
-# Version:      1.0
+# Author:       DinghaoYang (dinghowyang@gmail.com) and Yuseung Na (ys.na0220@gmail.com)
+# Version:      1.1
 #
 # Revision History
 #       January 19, 2021: Yuseung Na, Created
-#
+#       May 25, 2021: Dinghao Yang, Modified
 
 import numpy as np
 import os
 import argparse
-import pypcd
+import pcl
 import csv
 from tqdm import tqdm
 
@@ -30,12 +29,6 @@ def main():
         help=".bin file path.",
         type=str,
         default="/home/user/lidar_bin"
-    )
-    parser.add_argument(
-        "--file_name",
-        help="File name.",
-        type=str,
-        default="file_name"
     )
     args = parser.parse_args()
 
@@ -58,7 +51,7 @@ def main():
             os.makedirs(os.path.join(args.bin_path))
     except OSError as e:
         if e.errno != errno.EEXIST:
-            print ("Failed to create directory!!!!!")
+            print ("Failed to create directory!")
             raise
 
     ## Generate csv meta file
@@ -81,19 +74,20 @@ def main():
     seq = 0
     for pcd_file in tqdm(pcd_files):
         ## Get pcd file
-        pc = pypcd.PointCloud.from_path(pcd_file)
+        # pc = pypcd.PointCloud.from_path(pcd_file)
+        pc = pcl.load_XYZI(pcd_file)
+        pc = np.array(pc.to_array(), dtype=np.float32)
 
         ## Generate bin file name
-        bin_file_name = "{}_{:05d}.bin".format(args.file_name, seq)
+        bin_file_name = pcd_file.split('/')[-1].split('.')[0] + '.bin'
+        print(bin_file_name)
         bin_file_path = os.path.join(args.bin_path, bin_file_name)
         
-        ## Get data from pcd (x, y, z, intensity, ring, time)
-        np_x = (np.array(pc.pc_data['x'], dtype=np.float32)).astype(np.float32)
-        np_y = (np.array(pc.pc_data['y'], dtype=np.float32)).astype(np.float32)
-        np_z = (np.array(pc.pc_data['z'], dtype=np.float32)).astype(np.float32)
-        np_i = (np.array(pc.pc_data['intensity'], dtype=np.float32)).astype(np.float32)/256
-        # np_r = (np.array(pc.pc_data['ring'], dtype=np.float32)).astype(np.float32)
-        # np_t = (np.array(pc.pc_data['time'], dtype=np.float32)).astype(np.float32)
+        ## Get data from pcd (x, y, z, intensity)
+        np_x = (np.array(pc[:, 0], dtype=np.float32)).astype(np.float32)
+        np_y = (np.array(pc[:, 1], dtype=np.float32)).astype(np.float32)
+        np_z = (np.array(pc[:, 2], dtype=np.float32)).astype(np.float32)
+        np_i = (np.array(pc[:, 3], dtype=np.float32)).astype(np.float32)/256
 
         ## Stack all data    
         points_32 = np.transpose(np.vstack((np_x, np_y, np_z, np_i)))
